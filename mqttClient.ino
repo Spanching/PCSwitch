@@ -17,6 +17,8 @@ char* topic_rcsocket = "home/bedroom/rcsocket";
 char* username = MQTT_USER;
 char* password = MQTT_PASSWORD;
 
+bool disableRCSocket = false;
+
 void setup_mqtt(){
   char * server = (char *) malloc(32);
   server = "192.168.0.20";
@@ -31,6 +33,15 @@ void loop_mqtt(){
     reconnect();
   }
   client.loop();
+  if (disableRCSocket) { 
+    while(readPCStillAlive()) {
+      delay(200);
+    }
+    delay(1000);
+    // send RCSocket to turn off
+    client.publish(topic_rcsocket, "0");
+    disableRCSocket = false;
+  }
 }
 
 void callback(char* topic, byte* payload, unsigned int param_length) {
@@ -51,10 +62,7 @@ void callback(char* topic, byte* payload, unsigned int param_length) {
     } else if(str_payload.toInt() == 0) {
       Serial.println("PC off");
       togglePC();
-      while(readPCStillAlive()) ;
-      delay(1000);
-      // send RCSocket to turn off
-      client.publish(topic_rcsocket, "0");
+      disableRCSocket = true;
     }
   }
   
