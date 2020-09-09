@@ -25,6 +25,8 @@ For this to work you will need the following Arduino Libraries:
 
 All of which are available in the Arduino IDE.
 
+Copy config_sample.h to config.h and input your username and password for your MQTT broker.
+
 ## 4. Usage
 
 I built this device into my PC and use Node-Red to send the corresponding MQTT messages. I have two topics for power (home/bedroom/ultrazaziki/power) and for my RC Socket (home/bedroom/rcsocket). Those are mapped to the corresponding Inputs with Node-Red. For Example, I am using it with Alexa and other MQTT messages.
