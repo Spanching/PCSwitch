@@ -2,7 +2,7 @@
 
 ## 1. Motivation
 
-This repository shows my effort to be able to control an RC Socket and my PC with MQTT/Alexa. It is highly recommendet to have a look at my [RC Socket repository](http://test.com) to understand the usage.
+This repository shows my effort to be able to control an RC Socket and my PC with MQTT/Alexa. It is highly recommendet to have a look at my [RC Socket repository](https://github.com/Spanching/RCSwitchSocket) to understand the usage.
 
 ## 2. Hardware
 
