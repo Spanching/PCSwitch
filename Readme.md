@@ -22,7 +22,6 @@ For this to work you will need the following Arduino Libraries:
 - ESP8266WiFi
 - WiFiManager
 - ArduinoOTA
-- RCSwitch
 
 All of which are available in the Arduino IDE.
 
