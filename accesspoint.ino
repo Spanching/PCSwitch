@@ -2,17 +2,17 @@
 #include <DNSServer.h>
 #include <WiFiManager.h>
 
-void setup_wifi(boolean reset) {
-    
+void setup_wifi(boolean reset = false) {
+  // WiFiManager setup function to dynamically connect to WiFi and saving credentials in EEEPROM for future use
   WiFiManager wifiManager;
 
-  // to reset the wifiManager and the EEPROMto input new information
+  // reset WiFiManager settings 
   if(reset){
     wifiManager.resetSettings();
   }
 
   wifiManager.autoConnect("pc-switch-AP");
 
-  // if you get here you have connected to the WiFi
+  // Connected to WiFi
   Serial.println("Connected.");
 }

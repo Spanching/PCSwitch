@@ -10,21 +10,28 @@ WiFiClient espClient;
 
 PubSubClient client(espClient);
 
-char* topic_pc = "home/bedroom/ultrazaziki/power";
-char* topic_pc_alive_value = "home/bedroom/ultrazaziki/alive/value";
-char* topic_rcsocket = "home/bedroom/rcsocket";
+char* topic_power = "ultrazaziki/power";
+char* topic_status = "ultrazaziki/status";
 
 char* username = MQTT_USER;
 char* password = MQTT_PASSWORD;
 
-bool disableRCSocket = false;
+bool last_alive = false;
+bool alive = false;
+
+unsigned long last_millis_5s = 0;
+unsigned long last_millis_5m = 0;
+unsigned long last_millis_reconnect = 0;
+
+unsigned long mills = 0;
 
 void setup_mqtt(){
+  // setup function to connect to the MQTT Server defined in config.h
   char * server = (char *) malloc(32);
-  server = "192.168.0.20";
+  server = MQTT_SERVER;                       // cast from bytes to char*
   client.setServer(server, 1883);
   client.setCallback(callback);
-  Serial.print("Setup Mqtt with server");
+  Serial.print("Setup Mqtt with server ");
   Serial.println(server);
 }
 
@@ -32,19 +39,31 @@ void loop_mqtt(){
   if (!client.connected()) {
     reconnect();
   }
-  client.loop();
-  if (disableRCSocket) { 
-    while(readPCStillAlive()) {
-      delay(200);
+  mills = millis();
+  // we don't have to handle overflow because the result of unsigned longs overflows as well
+  // around every 50 days, the update inverval goes from 5 seconds to maximum 10 seconds once
+  // which does not affect it at all 
+  if (mills - last_millis_5s >= 5000) {
+    // reads status every 5 seconds
+    last_millis_5s = mills;
+    last_alive = alive;
+    alive = readPCStillAlive();
+    // no overflow handling as well for the same reason as above, it might take 10 minutes for one 
+    // update approximately every 50 days
+    if (mills - last_millis_5m >= 300000) {
+      // publish status every 5 minutes
+      last_millis_5m = mills;
+      client.publish(topic_status, (alive)? "1" : "0");
+    } else if (last_alive != alive) {
+      // publish status if changed by mqtt command
+      client.publish(topic_status, (alive)? "1" : "0");
     }
-    delay(1000);
-    // send RCSocket to turn off
-    client.publish(topic_rcsocket, "0");
-    disableRCSocket = false;
   }
+  client.loop();
 }
 
 void callback(char* topic, byte* payload, unsigned int param_length) {
+  // print incoming messages
   Serial.print("Message arrived [");
   Serial.print(topic);
   Serial.print("] ");
@@ -54,53 +73,44 @@ void callback(char* topic, byte* payload, unsigned int param_length) {
     str_payload += (char)payload[i]; 
   }
   Serial.println();
-  
-  if (strcmp(topic, topic_pc)==0){
-    if (str_payload.toInt() == 1) {
+
+  last_alive = alive;
+  alive = readPCStillAlive();
+  if (strcmp(topic, topic_power) == 0){
+    if (str_payload.toInt() == 1 && !alive) {
+      // turn on pc if 1 was sent on topic and pc is not already powered
       Serial.println("PC on");
       togglePC();
-    } else if(str_payload.toInt() == 0) {
+    } else if(str_payload.toInt() == 0 && alive) {
+      // turn off pc if 0 was sent on topic and pc is already powered
       Serial.println("PC off");
       togglePC();
-      disableRCSocket = true;
     }
+    // always publish status after receiving any mqtt command
+    alive = readPCStillAlive();
+    client.publish(topic_status, (alive)? "1" : "0");
   }
-  
-  if (strcmp(topic, topic_pc_alive_value)==0){
-    str_payload = String(readPCStillAliveValue());
-  }
-  
-  char* tmp = (char*)malloc(5+1);
-  char* back_topic = (char*)malloc(200);
-  memset(back_topic, '\0', 200);
-  strcpy(back_topic, topic);
-  strcat(back_topic, "/back");
-  Serial.print(back_topic);
-  Serial.println(":  " + str_payload);
-  str_payload.toCharArray(tmp, 5+1);
-  client.publish(back_topic, tmp);
-  free(tmp);
-  free(back_topic);
 }
 
 void reconnect() {
-  // Loop until we're re-/connected
+  // reconnecting to MQTT server after losing connection
   if (!client.connected()) {
+    if (millis() - last_millis_reconnect < 5000) {
+      // only try reconnect every 5 seconds
+      return;
+    }
+    last_millis_reconnect = millis();
+
     Serial.print("Attempting MQTT connection...");
-    // Create a random client ID
-    String clientId = "ESP8266Client-";
+    String clientId = "PCSwitch-";
     clientId += String(random(0xffff), HEX);
-    // Attempt to connect
     if (client.connect(clientId.c_str(), username, password)) {
-      Serial.println("MQTT connected");
-      client.subscribe(topic_pc);
-      client.subscribe(topic_pc_alive_value);
+      // connection successful, subscribe to power topic
+      Serial.println("MQTT connected!");
+      client.subscribe(topic_power);
     } else {
-      Serial.print("failed, rc=");
-      Serial.print(client.state());
-      Serial.println(" try again in a couple seconds");
-      // Wait 5 seconds before retrying
-      delay(2500);
+      // connection failed, retry after 5 seconds
+      Serial.println(" failed, trying again in 5 seconds");
     }
   }
 }
