@@ -1,28 +1,19 @@
 #include <ArduinoOTA.h>
 
 void setup_ota() {
- 
-  // Port defaults to 8266
-  // ArduinoOTA.setPort(8266);
-
-  // Hostname defaults to esp8266-[ChipID]
+  // setup for OTA Updates
   ArduinoOTA.setHostname("PCSwitch");
 
-  // No authentication by default
+  // No authentication by default, can be changed with:
   // ArduinoOTA.setPassword("admin");
-
-  // Password can be set with it's md5 value as well
-  // MD5(admin) = 21232f297a57a5a743894a0e4a801fc3
-  // ArduinoOTA.setPasswordHash("21232f297a57a5a743894a0e4a801fc3");
 
   ArduinoOTA.onStart([]() {
     String type;
     if (ArduinoOTA.getCommand() == U_FLASH)
       type = "sketch";
-    else // U_SPIFFS
+    else
       type = "filesystem";
 
-    // NOTE: if updating SPIFFS this would be the place to unmount SPIFFS using SPIFFS.end()
     Serial.println("Start updating " + type);
   });
   ArduinoOTA.onEnd([]() {
